@@ -1,25 +1,29 @@
 #include <dirent.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
-char    *ft_strjoin(char const *s1, char const *s2)
-{
-	int             size_s1;
-	int             size_s2;
-	char    *res;
+#include "get_next_line.h"
 
-	size_s1 = strlen(s1);
-	size_s2 = strlen(s2);
-	res = (char *)malloc((size_s1 + size_s2 + 1) * sizeof(char));
-	if (!res)
-		return (NULL);
-	memcpy(res, s1, size_s1);
-	memcpy(res + size_s1, s2, size_s2);
-	res[size_s1 + size_s2] = '\0';
-	return (res);
-}
+// char    *ft_strjoin(char const *s1, char const *s2)
+// {
+// 	int             size_s1;
+// 	int             size_s2;
+// 	char    *res;
+// 
+// 	size_s1 = strlen(s1);
+// 	size_s2 = strlen(s2);
+// 	res = (char *)malloc((size_s1 + size_s2 + 1) * sizeof(char));
+// 	if (!res)
+// 		return (NULL);
+// 	memcpy(res, s1, size_s1);
+// 	memcpy(res + size_s1, s2, size_s2);
+// 	res[size_s1 + size_s2] = '\0';
+// 	return (res);
+// }
 
 typedef struct {
 	char			*name;
@@ -85,18 +89,15 @@ int substr(char *str, char *pattern)
   int y;
 
   i = 0;
-  y = 0;
   while (str[i])
   {
-    while (str[i] == pattern[y])
+    y = 0;
+    while (str[i + y] == pattern[y])
     {
-      if (pattern[y + 1])
-      {
+      if (pattern[y + 1] == '\0')
         return (i);
-      }
       y++;
     }
-    y = 0;
     i++;
   }
   return (-1);
@@ -131,6 +132,79 @@ void  ft_printf(char *str)
   }
 }
 
+void  ft_putnbr(int n)
+{
+  long  number;
+  long  res;
+  long  rem;
+  char  c;
+
+  number = (long)n;
+  if (number < 0)
+  {
+    write(1, "-", 1);
+    number *= -1;
+  }
+  res = number / 10;
+  rem = number % 10;
+  if (res != 0)
+    ft_putnbr(res);
+  c = rem + 48;
+  write(1, &c, 1);
+}
+
+char  *trim_spaces(char *str)
+{
+  while (*str && isspace(*str))
+    str++;
+  return (str);
+}
+
+void  print_file_pattern(char *path, char *pattern)
+{
+  int   has_printed_filename;
+  int   fd;
+  char  *str;
+  int   index;
+  char  *trimmed;
+  int   line_number;
+
+  has_printed_filename = 0;
+  fd = open(path, O_RDONLY);
+
+  // Open file
+  if (fd < 0)
+    return ;
+
+  line_number = 0;
+  // Read
+  while ((str = get_next_line(fd)))
+  {
+    line_number++;
+    trimmed = trim_spaces(str);
+    index = substr(trimmed, pattern);
+    if (index >= 0)
+    {
+      if (!has_printed_filename)
+      {
+        ft_printf(path);
+        write(1, "\n", 1);
+        has_printed_filename = 1;
+      }
+      ft_putnbr(line_number);
+      write(1, " ", 1);
+      print_pattern(trimmed, index, strlen(pattern));
+    }
+    free(str);
+  }
+
+  // Final line return
+  if (has_printed_filename)
+    write(1, "\n", 1);
+
+  close(fd);
+}
+
 // Show each mathing result (either filename or content)
 void	show_matching_results(directory **dir_list, char *pattern, char *path)
 {
@@ -139,11 +213,11 @@ void	show_matching_results(directory **dir_list, char *pattern, char *path)
 	i = 0;
 	while (dir_list[i] != NULL)
 	{
-    int index = substr(dir_list[i]->name, pattern);
     // Handle directories
     if (dir_list[i]->type == DT_DIR)
     {
-      if (index > 0)
+      int index = substr(dir_list[i]->name, pattern);
+      if (index >= 0)
       {
         ft_printf(path);
         ft_printf("/");
@@ -154,13 +228,11 @@ void	show_matching_results(directory **dir_list, char *pattern, char *path)
     // Handle files
     else
     {
-      if (index > 0)
-      {
-        ft_printf(path);
-        ft_printf("/");
-        print_pattern(dir_list[i]->name, index, strlen(pattern));
-        ft_printf("\n");
-      }
+      char  *tmp = ft_strjoin(path, "/");
+      char  *full = ft_strjoin(tmp, dir_list[i]->name);
+      free(tmp);
+      print_file_pattern(full, pattern);
+      free(full);
     }
 		i++;
 	}
@@ -225,6 +297,6 @@ void	rec_explore(char *path, char *pattern)
 
 int	main(void)
 {
-	rec_explore(".", "st");
+	rec_explore(".", "test");
 	return (0);
 }
