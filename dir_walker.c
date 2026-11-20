@@ -1,16 +1,24 @@
 #include <dirent.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-struct dirent	**get_subdirs(DIR *path)
+typedef struct {
+	char			*name;
+	unsigned char	type;
+}	directory;
+
+// Get a path and returns all children from that path (including . and ..)
+directory	**get_subdirs(DIR *path)
 {
 	struct dirent	*current_dir;
+	struct dirent	*tmp;
 	int				count;
-	struct dirent	**res;
+	directory		**res;
 
 	if (!path)
 	{
-		printf("Could not open current dir\n");
+		printf("Could not open current directory\n");
 		return (NULL);
 	}
 	// Get number of children
@@ -22,24 +30,41 @@ struct dirent	**get_subdirs(DIR *path)
 		current_dir = readdir(path);
 	}
 	// Malloc size
-	res = (struct dirent **)malloc((count + 1) * sizeof(struct dirent *));
-	// Copy each dir
-	current_dir = readdir(path);
+	res = (directory **)malloc((count + 1) * sizeof(struct directory *));
+	if (!res)
+		return (NULL);
+	// Copy each directory
+	rewinddir(path);
 	int i = 0;
 	while (i < count)
 	{
-		res[i] = current_dir;
-		current_dir = readdir(path);
+		res[i] = (directory *)malloc(sizeof(directory));
+		tmp = readdir(path);
+		res[i]->name = strdup(tmp->d_name);
+		res[i]->type = tmp->d_type;
 		i++;
 	}
 	res[i] = NULL;
 	return (res);
 }
 
+void	free_subdirs(directory **dirs)
+{
+	int	count;
+
+	count = 0;
+	while (dirs[count])
+	{
+		free(dirs[count]);
+		count++;
+	}
+	free(dirs);
+}
+
 int	main(void)
 {
-	DIR 			*dir;
-	struct dirent	**dir_list;
+	DIR	*dir;
+	directory	**dir_list;
 
 	dir = opendir(".");
 	if (!dir)
@@ -56,16 +81,15 @@ int	main(void)
 		return (1);
 	}
 
-	printf("It worked!\n");
-
 	// Print 'em
 	int i = 0;
 	while (dir_list[i] != NULL)
 	{
-		printf("siuu\n");
-		printf("%s\n", dir_list[i]->d_name);
+		printf("%s\n", dir_list[i]->name);
 		i++;
 	}
+
+	free_subdirs(dir_list);
 
 	closedir(dir);
 	return (0);
