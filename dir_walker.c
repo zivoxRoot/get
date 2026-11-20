@@ -117,11 +117,22 @@ void  print_pattern(char *str, int index, int size)
       write(1, "\033[39m", 5);
     i++;
   }
-  write(1, "\n", 1);
+}
+
+void  ft_printf(char *str)
+{
+  int i;
+
+  i = 0;
+  while (str[i])
+  {
+    write(1, &str[i], 1);
+    i++;
+  }
 }
 
 // Show each mathing result (either filename or content)
-void	show_matching_results(directory **dir_list, char *pattern)
+void	show_matching_results(directory **dir_list, char *pattern, char *path)
 {
 	int i;
 
@@ -133,12 +144,23 @@ void	show_matching_results(directory **dir_list, char *pattern)
     if (dir_list[i]->type == DT_DIR)
     {
       if (index > 0)
-          print_pattern(dir_list[i]->name, index, strlen(pattern));
+      {
+        ft_printf(path);
+        ft_printf("/");
+        print_pattern(dir_list[i]->name, index, strlen(pattern));
+        ft_printf("/\n");
+      }
     }
     // Handle files
     else
     {
+      if (index > 0)
+      {
+        ft_printf(path);
+        ft_printf("/");
         print_pattern(dir_list[i]->name, index, strlen(pattern));
+        ft_printf("\n");
+      }
     }
 		i++;
 	}
@@ -167,8 +189,7 @@ void	rec_explore(char *path, char *pattern)
 		return ;
 	}
 
-	printf("\n\n-- Currently in %s\n", path);
-	show_matching_results(dir_list, pattern);
+	show_matching_results(dir_list, pattern, path);
 
 	// Operate on 'em
 	int i = 0;
@@ -193,7 +214,6 @@ void	rec_explore(char *path, char *pattern)
 			continue ;
 		}
 		dir = ft_strjoin(ft_strjoin(path, "/"), dir_list[i]->name);
-		printf("New dir to explore: %s\n", dir);
 		rec_explore(dir, pattern);
 		free(dir);
 		i++;
